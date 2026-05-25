@@ -15,11 +15,93 @@ const CATEGORY_STYLES = {
 const START_HOUR = 6;
 const END_HOUR = 23;
 
-const initialTasks = [];
+const initialTasks = [
+  {
+    id: crypto.randomUUID(),
+    title: "Finish government assignment",
+    duration: 60,
+    priority: "High",
+    category: "School",
+    description: "Finish the questions and self-evaluation.",
+    steps: [
+      { id: crypto.randomUUID(), title: "Review directions", done: false },
+      { id: crypto.randomUUID(), title: "Answer missing questions", done: false },
+      { id: crypto.randomUUID(), title: "Check grammar", done: false },
+    ],
+    scheduledBlockId: null,
+  },
+  {
+    id: crypto.randomUUID(),
+    title: "Study for math quiz",
+    duration: 45,
+    priority: "Medium",
+    category: "School",
+    description: "Review notes and practice problems.",
+    steps: [
+      { id: crypto.randomUUID(), title: "Review examples", done: false },
+      { id: crypto.randomUUID(), title: "Do practice problems", done: false },
+    ],
+    scheduledBlockId: null,
+  },
+];
 
-const initialBlocks = [];
+const initialBlocks = [
+  {
+    id: crypto.randomUUID(),
+    title: "School",
+    day: "Monday",
+    start: "09:00",
+    end: "11:00",
+    category: "School",
+    description: "Morning classes.",
+    steps: ["Arrive on time", "Check assignments"],
+    source: "regular",
+  },
+  {
+    id: crypto.randomUUID(),
+    title: "Work",
+    day: "Monday",
+    start: "13:00",
+    end: "17:00",
+    category: "Work",
+    description: "Shift.",
+    steps: ["Clock in", "Finish closing tasks"],
+    source: "regular",
+  },
+];
 
-const initialRegularBlocks = [];
+const initialRegularBlocks = [
+  {
+    id: crypto.randomUUID(),
+    title: "School",
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+    start: "09:00",
+    end: "11:00",
+    category: "School",
+    description: "Regular school block.",
+    steps: ["Bring laptop", "Check assignments"],
+  },
+  {
+    id: crypto.randomUUID(),
+    title: "Work",
+    days: ["Monday", "Tuesday", "Thursday", "Friday"],
+    start: "13:00",
+    end: "17:00",
+    category: "Work",
+    description: "Regular work shift.",
+    steps: ["Clock in", "Check tasks"],
+  },
+  {
+    id: crypto.randomUUID(),
+    title: "Tennis / Training",
+    days: ["Wednesday", "Saturday"],
+    start: "16:00",
+    end: "18:00",
+    category: "Sports",
+    description: "Practice or conditioning.",
+    steps: ["Warm up", "Practice", "Stretch"],
+  },
+];
 
 function timeToMinutes(time) {
   const [hours, minutes] = time.split(":").map(Number);
