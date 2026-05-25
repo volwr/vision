@@ -12,42 +12,83 @@ const CATEGORY_STYLES = {
   Other: "cat-other",
 };
 
+const PRIORITY_STYLES = {
+  High: "prio-high",
+  Medium: "prio-medium",
+  Low: "prio-low",
+};
+
+const BLOCK_COLOR_STYLES = ["block-paper-a", "block-paper-b", "block-paper-c", "block-paper-d", "block-paper-e"];
+
 const START_HOUR = 6;
 const END_HOUR = 23;
+
+function toISODate(date) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  const year = copy.getFullYear();
+  const month = String(copy.getMonth() + 1).padStart(2, "0");
+  const day = String(copy.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getWeekStart(date = new Date()) {
+  const copy = new Date(date);
+  copy.setHours(0, 0, 0, 0);
+  const offset = copy.getDay() === 0 ? -6 : 1 - copy.getDay();
+  copy.setDate(copy.getDate() + offset);
+  return copy;
+}
+
+function getDateForDay(dayName) {
+  const weekStart = getWeekStart();
+  const date = new Date(weekStart);
+  date.setDate(weekStart.getDate() + DAYS.indexOf(dayName));
+  return date;
+}
+
+function getISODateForDay(dayName) {
+  return toISODate(getDateForDay(dayName));
+}
+
+const sampleClassBlockId = crypto.randomUUID();
+const sampleHomeworkBlockId = crypto.randomUUID();
 
 const initialTasks = [
   {
     id: crypto.randomUUID(),
-    title: "Finish sample assignment",
+    title: "Math practice set",
     duration: 60,
     priority: "High",
-    category: "School",
+    category: "Homework",
+    dueDate: getISODateForDay("Wednesday"),
     description: "Complete the practice questions and review the work.",
     steps: [
       { id: crypto.randomUUID(), title: "Review directions", done: false },
       { id: crypto.randomUUID(), title: "Answer practice questions", done: false },
       { id: crypto.randomUUID(), title: "Check grammar", done: false },
     ],
-    scheduledBlockId: null,
+    scheduledBlockId: sampleHomeworkBlockId,
   },
   {
     id: crypto.randomUUID(),
-    title: "Study for sample quiz",
+    title: "English reading notes",
     duration: 45,
     priority: "Medium",
-    category: "School",
-    description: "Review sample notes and practice problems.",
+    category: "Homework",
+    dueDate: getISODateForDay("Friday"),
+    description: "Review the sample reading and write notes.",
     steps: [
-      { id: crypto.randomUUID(), title: "Review examples", done: false },
-      { id: crypto.randomUUID(), title: "Do practice problems", done: false },
+      { id: crypto.randomUUID(), title: "Read the section", done: false },
+      { id: crypto.randomUUID(), title: "Write notes", done: false },
     ],
-    scheduledBlockId: null,
+    scheduledBlockId: sampleHomeworkBlockId,
   },
 ];
 
 const initialBlocks = [
   {
-    id: crypto.randomUUID(),
+    id: sampleClassBlockId,
     title: "Sample Class",
     day: "Monday",
     start: "09:00",
@@ -58,14 +99,14 @@ const initialBlocks = [
     source: "regular",
   },
   {
-    id: crypto.randomUUID(),
-    title: "Sample Work Block",
+    id: sampleHomeworkBlockId,
+    title: "Homework Block",
     day: "Monday",
     start: "13:00",
     end: "17:00",
-    category: "Work",
-    description: "Example focus block.",
-    steps: ["Start timer", "Wrap up tasks"],
+    category: "Homework",
+    description: "Example homework block that can hold Math, English, or other assigned tasks.",
+    steps: ["Pick assignment", "Work in order", "Review due dates"],
     source: "regular",
   },
 ];
@@ -125,6 +166,27 @@ function formatRange(start, end) {
   return `${formatTime(start)} - ${formatTime(end)}`;
 }
 
+function formatDate(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function formatDateLong(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function formatDueDate(dateString) {
+  if (!dateString) return "No due date";
+  const [year, month, day] = dateString.split("-").map(Number);
+  return formatDateLong(new Date(year, month - 1, day));
+}
+
 function blocksOverlap(aStart, aEnd, bStart, bEnd) {
   return timeToMinutes(aStart) < timeToMinutes(bEnd) && timeToMinutes(aEnd) > timeToMinutes(bStart);
 }
@@ -141,6 +203,26 @@ function priorityRank(priority) {
   if (priority === "High") return 1;
   if (priority === "Medium") return 2;
   return 3;
+}
+
+function hashString(value) {
+  return [...value].reduce((total, char) => total + char.charCodeAt(0), 0);
+}
+
+function getTaskStyle(task) {
+  return PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.Low;
+}
+
+function getBlockStyle(block, tasks = []) {
+  const attachedTasks = tasks.filter((task) => task.scheduledBlockId === block.id || task.id === block.taskId);
+
+  if (attachedTasks.length > 0) {
+    const topTask = [...attachedTasks].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority))[0];
+    return getTaskStyle(topTask);
+  }
+
+  const seed = `${block.title}-${block.day}-${block.start}-${block.category}`;
+  return BLOCK_COLOR_STYLES[hashString(seed) % BLOCK_COLOR_STYLES.length];
 }
 
 function getTodayName() {
@@ -224,6 +306,8 @@ export default function App() {
     duration: 45,
     priority: "Medium",
     category: "School",
+    dueDate: "",
+    scheduledBlockId: "",
     description: "",
     stepsText: "",
   });
@@ -268,9 +352,10 @@ export default function App() {
       duration: Number(taskDraft.duration),
       priority: taskDraft.priority,
       category: taskDraft.category,
+      dueDate: taskDraft.dueDate,
       description: taskDraft.description.trim(),
       steps: stepsFromText(taskDraft.stepsText),
-      scheduledBlockId: null,
+      scheduledBlockId: taskDraft.scheduledBlockId || null,
     };
 
     setTasks((current) => [newTask, ...current]);
@@ -279,10 +364,12 @@ export default function App() {
       duration: 45,
       priority: "Medium",
       category: "School",
+      dueDate: "",
+      scheduledBlockId: "",
       description: "",
       stepsText: "",
     });
-    showMessage("Task added.");
+    showMessage(newTask.scheduledBlockId ? "Task added to time block." : "Task added.");
   }
 
   function addManualBlock(event) {
@@ -557,13 +644,14 @@ export default function App() {
 
     setBlocks((current) => current.filter((block) => block.id !== deletedBlock.id));
 
-    if (deletedBlock.taskId) {
-      setTasks((current) =>
-        current.map((task) =>
-          task.id === deletedBlock.taskId ? { ...task, scheduledBlockId: null } : task
-        )
-      );
-    }
+    setTasks((current) =>
+      current.map((task) => {
+        if (task.id === deletedBlock.taskId || task.scheduledBlockId === deletedBlock.id) {
+          return { ...task, scheduledBlockId: null };
+        }
+        return task;
+      })
+    );
 
     setActiveBlock(null);
     showMessage("Block deleted.");
@@ -573,7 +661,9 @@ export default function App() {
     const task = tasks.find((item) => item.id === taskId);
 
     if (task?.scheduledBlockId) {
-      setBlocks((current) => current.filter((block) => block.id !== task.scheduledBlockId));
+      setBlocks((current) =>
+        current.filter((block) => block.taskId !== task.id)
+      );
     }
 
     setTasks((current) => current.filter((item) => item.id !== taskId));
@@ -608,8 +698,9 @@ export default function App() {
 
     setTasks((current) => current.map((task) => (task.id === cleanTask.id ? cleanTask : task)));
     setBlocks((current) =>
-      current.map((block) => {
+      current.flatMap((block) => {
         if (block.taskId !== cleanTask.id) return block;
+        if (cleanTask.scheduledBlockId !== block.id) return [];
         return {
           ...block,
           title: cleanTask.title,
@@ -671,7 +762,7 @@ export default function App() {
           <p>Smart Planner</p>
         </div>
 
-        <div className="date-pill">{selectedDay}</div>
+        <div className="date-pill">{formatDateLong(getDateForDay(selectedDay))}</div>
       </header>
 
       {menuOpen && (
@@ -712,6 +803,8 @@ export default function App() {
           <Dashboard
             selectedDay={selectedDay}
             setSelectedDay={setSelectedDay}
+            blocks={blocks}
+            tasks={tasks}
             selectedDayBlocks={selectedDayBlocks}
             openBlock={openBlock}
             unscheduledTasks={unscheduledTasks}
@@ -734,6 +827,7 @@ export default function App() {
             setBlockDraft={setBlockDraft}
             addManualBlock={addManualBlock}
             regularBlocks={regularBlocks}
+            tasks={tasks}
             regularDraft={regularDraft}
             setRegularDraft={setRegularDraft}
             toggleRegularDay={toggleRegularDay}
@@ -765,6 +859,8 @@ export default function App() {
           setActiveBlock={setActiveBlock}
           saveActiveBlock={saveActiveBlock}
           deleteActiveBlock={deleteActiveBlock}
+          assignedTasks={tasks.filter((task) => task.scheduledBlockId === activeBlock.id)}
+          openTask={openTask}
         />
       )}
 
@@ -772,11 +868,20 @@ export default function App() {
         <TaskModal
           activeTask={activeTask}
           setActiveTask={setActiveTask}
+          returnToBlock={Boolean(activeBlock)}
+          closeTask={() => {
+            setActiveTask(null);
+            if (activeBlock) {
+              setActiveBlock(null);
+            }
+          }}
+          backToBlock={() => setActiveTask(null)}
           saveActiveTask={saveActiveTask}
           addStepToActiveTask={addStepToActiveTask}
           updateActiveTaskStep={updateActiveTaskStep}
           deleteActiveTaskStep={deleteActiveTaskStep}
           deleteTask={deleteTask}
+          blocks={blocks}
         />
       )}
     </div>
@@ -786,6 +891,8 @@ export default function App() {
 function Dashboard({
   selectedDay,
   setSelectedDay,
+  blocks,
+  tasks,
   selectedDayBlocks,
   openBlock,
   unscheduledTasks,
@@ -795,6 +902,13 @@ function Dashboard({
   generatePlan,
   openTask,
 }) {
+  const upcomingTasks = [...tasks].sort((a, b) => {
+    const aDue = a.dueDate || "9999-12-31";
+    const bDue = b.dueDate || "9999-12-31";
+    if (aDue !== bDue) return aDue.localeCompare(bDue);
+    return priorityRank(a.priority) - priorityRank(b.priority);
+  });
+
   return (
     <section className="page-grid dashboard-grid">
       <section className="paper-card schedule-panel">
@@ -802,6 +916,7 @@ function Dashboard({
           <div>
             <p className="eyebrow">Today's schedule</p>
             <h3>{selectedDay} Time Blocks</h3>
+            <span className="date-line">{formatDateLong(getDateForDay(selectedDay))}</span>
           </div>
           <span className="note-chip">{selectedDayBlocks.length} planned</span>
         </div>
@@ -810,13 +925,20 @@ function Dashboard({
           <div className="empty-note">No time blocks yet. Add regular blocks or generate a plan.</div>
         ) : (
           <div className="block-list">
-            {selectedDayBlocks.map((block) => (
-              <button key={block.id} className={`time-card ${CATEGORY_STYLES[block.category]}`} onClick={() => openBlock(block)}>
-                <span className="time">{formatRange(block.start, block.end)}</span>
-                <strong>{block.title}</strong>
-                <small>{block.category}</small>
-              </button>
-            ))}
+            {selectedDayBlocks.map((block) => {
+              const assignedTasks = tasks.filter((task) => task.scheduledBlockId === block.id);
+
+              return (
+                <button key={block.id} className={`time-card ${getBlockStyle(block, tasks)}`} onClick={() => openBlock(block)}>
+                  <span className="time">{formatRange(block.start, block.end)}</span>
+                  <strong>{block.title}</strong>
+                  <small>{block.category}</small>
+                  {assignedTasks.length > 0 && (
+                    <span className="task-count">{assignedTasks.length} task{assignedTasks.length === 1 ? "" : "s"} inside</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </section>
@@ -825,16 +947,19 @@ function Dashboard({
         <div className="section-heading">
           <div>
             <p className="eyebrow">Tasks</p>
-            <h3>Not Scheduled</h3>
+            <h3>Due & Assigned</h3>
           </div>
-          <span className="note-chip">{unscheduledTasks.length}</span>
+          <span className="note-chip">{upcomingTasks.length}</span>
         </div>
 
         <div className="task-stack">
-          {unscheduledTasks.length === 0 ? (
-            <div className="empty-note">Everything is scheduled.</div>
+          {upcomingTasks.length === 0 ? (
+            <div className="empty-note">No tasks yet.</div>
           ) : (
-            unscheduledTasks.map((task) => <TaskNote key={task.id} task={task} openTask={openTask} />)
+            upcomingTasks.map((task) => {
+              const block = blocks.find((item) => item.id === task.scheduledBlockId);
+              return <TaskNote key={task.id} task={task} block={block} openTask={openTask} />;
+            })
           )}
         </div>
       </section>
@@ -848,7 +973,9 @@ function Dashboard({
         <div className="hero-actions">
           <select value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
             {DAYS.map((day) => (
-              <option key={day}>{day}</option>
+              <option key={day} value={day}>
+                {day} - {formatDate(getDateForDay(day))}
+              </option>
             ))}
           </select>
 
@@ -869,7 +996,7 @@ function Dashboard({
           </div>
         </div>
 
-        <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} compact />
+        <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} blocks={blocks} compact />
       </section>
 
     </section>
@@ -891,6 +1018,7 @@ function CalendarPage({
   addRegularBlock,
   applyRegularBlock,
   deleteRegularBlock,
+  tasks,
 }) {
   return (
     <section className="calendar-page">
@@ -903,7 +1031,9 @@ function CalendarPage({
 
           <select value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
             {DAYS.map((day) => (
-              <option key={day}>{day}</option>
+              <option key={day} value={day}>
+                {day} - {formatDate(getDateForDay(day))}
+              </option>
             ))}
           </select>
         </div>
@@ -917,7 +1047,8 @@ function CalendarPage({
             return (
               <div className={`day-column ${selectedDay === day ? "selected-day" : ""}`} key={day}>
                 <button className="day-title" onClick={() => setSelectedDay(day)}>
-                  {day}
+                  <strong>{day}</strong>
+                  <span>{formatDate(getDateForDay(day))}</span>
                 </button>
 
                 <div className="day-lines">
@@ -932,16 +1063,21 @@ function CalendarPage({
                 </div>
 
                 <div className="day-blocks">
-                  {dayBlocks.map((block) => (
-                    <button
-                      key={block.id}
-                      className={`mini-block ${CATEGORY_STYLES[block.category]}`}
-                      onClick={() => openBlock(block)}
-                    >
-                      <strong>{block.title}</strong>
-                      <span>{formatRange(block.start, block.end)}</span>
-                    </button>
-                  ))}
+                  {dayBlocks.map((block) => {
+                    const assignedTasks = tasks.filter((task) => task.scheduledBlockId === block.id);
+
+                    return (
+                      <button
+                        key={block.id}
+                      className={`mini-block ${getBlockStyle(block, tasks)}`}
+                        onClick={() => openBlock(block)}
+                      >
+                        <strong>{block.title}</strong>
+                        <span>{formatRange(block.start, block.end)}</span>
+                        {assignedTasks.length > 0 && <small>{assignedTasks.length} task{assignedTasks.length === 1 ? "" : "s"}</small>}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -971,7 +1107,9 @@ function CalendarPage({
                 onChange={(event) => setBlockDraft({ ...blockDraft, day: event.target.value })}
               >
                 {DAYS.map((day) => (
-                  <option key={day}>{day}</option>
+                  <option key={day} value={day}>
+                    {day} - {formatDate(getDateForDay(day))}
+                  </option>
                 ))}
               </select>
 
@@ -1110,7 +1248,7 @@ function CalendarPage({
 
         <div className="regular-grid">
           {regularBlocks.map((block) => (
-            <article className={`sticky-card ${CATEGORY_STYLES[block.category]}`} key={block.id}>
+            <article className={`sticky-card ${getBlockStyle(block)}`} key={block.id}>
               <div>
                 <strong>{block.title}</strong>
                 <p>{block.days.join(", ")}</p>
@@ -1153,17 +1291,18 @@ function TasksPage({ tasks, blocks, taskDraft, setTaskDraft, addTask, deleteTask
             const block = blocks.find((item) => item.id === task.scheduledBlockId);
 
             return (
-              <article className="task-row" key={task.id}>
+              <article className={`task-row ${getTaskStyle(task)}`} key={task.id}>
                 <button className="task-row-main" onClick={() => openTask(task)}>
                   <strong>{task.title}</strong>
                   <p>{task.description || "No description yet."}</p>
                   <span>
                     {task.duration} min * {task.priority} priority * {task.category}
                   </span>
+                  <small>Due: {formatDueDate(task.dueDate)}</small>
                   <small>{normalizeSteps(task.steps).filter((step) => step.done).length} of {normalizeSteps(task.steps).length} steps complete</small>
                   {block && (
                     <small>
-                      Scheduled: {block.day}, {formatRange(block.start, block.end)}
+                      Assigned: {block.title} on {block.day}, {formatRange(block.start, block.end)}
                     </small>
                   )}
                 </button>
@@ -1190,7 +1329,7 @@ function TasksPage({ tasks, blocks, taskDraft, setTaskDraft, addTask, deleteTask
           </div>
         </div>
 
-        <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} />
+        <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} blocks={blocks} />
       </section>
     </section>
   );
@@ -1228,7 +1367,7 @@ function SettingsPage() {
   );
 }
 
-function TaskForm({ taskDraft, setTaskDraft, addTask, compact = false }) {
+function TaskForm({ taskDraft, setTaskDraft, addTask, blocks = [], compact = false }) {
   return (
     <form className="form-grid" onSubmit={addTask}>
       <input
@@ -1271,6 +1410,32 @@ function TaskForm({ taskDraft, setTaskDraft, addTask, compact = false }) {
         ))}
       </select>
 
+      <div className="two-col">
+        <label>
+          Due date
+          <input
+            type="date"
+            value={taskDraft.dueDate}
+            onChange={(event) => setTaskDraft({ ...taskDraft, dueDate: event.target.value })}
+          />
+        </label>
+
+        <label>
+          Assign to block
+          <select
+            value={taskDraft.scheduledBlockId}
+            onChange={(event) => setTaskDraft({ ...taskDraft, scheduledBlockId: event.target.value })}
+          >
+            <option value="">Not assigned</option>
+            {blocks.map((block) => (
+              <option key={block.id} value={block.id}>
+                {formatDate(getDateForDay(block.day))} {formatRange(block.start, block.end)} - {block.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       {!compact && (
         <>
           <textarea
@@ -1294,16 +1459,18 @@ function TaskForm({ taskDraft, setTaskDraft, addTask, compact = false }) {
   );
 }
 
-function TaskNote({ task, openTask }) {
+function TaskNote({ task, block, openTask }) {
   const steps = normalizeSteps(task.steps);
   const doneCount = steps.filter((step) => step.done).length;
 
   return (
-    <button className={`sticky-card task-note ${CATEGORY_STYLES[task.category]}`} onClick={() => openTask(task)}>
+    <button className={`sticky-card task-note ${getTaskStyle(task)}`} onClick={() => openTask(task)}>
       <strong>{task.title}</strong>
       <p>
         {task.duration} min * {task.priority}
       </p>
+      <span>Due: {formatDueDate(task.dueDate)}</span>
+      {block && <span>In: {block.title}</span>}
       <div className="step-progress">
         <span>{doneCount}/{steps.length} steps</span>
         <div>
@@ -1318,18 +1485,26 @@ function TaskNote({ task, openTask }) {
 function TaskModal({
   activeTask,
   setActiveTask,
+  returnToBlock = false,
+  closeTask,
+  backToBlock,
   saveActiveTask,
   addStepToActiveTask,
   updateActiveTaskStep,
   deleteActiveTaskStep,
   deleteTask,
+  blocks = [],
 }) {
   const steps = normalizeSteps(activeTask.steps);
   const completeCount = steps.filter((step) => step.done).length;
 
   function deleteAndClose() {
     deleteTask(activeTask.id);
-    setActiveTask(null);
+    if (closeTask) {
+      closeTask();
+    } else {
+      setActiveTask(null);
+    }
   }
 
   return (
@@ -1341,9 +1516,16 @@ function TaskModal({
             <h2>Edit Task</h2>
           </div>
 
-          <button className="close-btn" onClick={() => setActiveTask(null)}>
-            x
-          </button>
+          <div className="modal-header-actions">
+            {returnToBlock && (
+              <button className="secondary-btn compact-btn" onClick={backToBlock}>
+                Back
+              </button>
+            )}
+            <button className="close-btn" onClick={closeTask || (() => setActiveTask(null))}>
+              x
+            </button>
+          </div>
         </div>
 
         <form className="form-grid" onSubmit={saveActiveTask}>
@@ -1386,6 +1568,34 @@ function TaskModal({
               <option key={category}>{category}</option>
             ))}
           </select>
+
+          <div className="two-col">
+            <label>
+              Due date
+              <input
+                type="date"
+                value={activeTask.dueDate || ""}
+                onChange={(event) => setActiveTask({ ...activeTask, dueDate: event.target.value })}
+              />
+            </label>
+
+            <label>
+              Assign to block
+              <select
+                value={activeTask.scheduledBlockId || ""}
+                onChange={(event) =>
+                  setActiveTask({ ...activeTask, scheduledBlockId: event.target.value || null })
+                }
+              >
+                <option value="">Not assigned</option>
+                {blocks.map((block) => (
+                  <option key={block.id} value={block.id}>
+                    {formatDate(getDateForDay(block.day))} {formatRange(block.start, block.end)} - {block.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <textarea
             value={activeTask.description || ""}
@@ -1453,7 +1663,7 @@ function TaskModal({
   );
 }
 
-function BlockModal({ activeBlock, setActiveBlock, saveActiveBlock, deleteActiveBlock }) {
+function BlockModal({ activeBlock, setActiveBlock, saveActiveBlock, deleteActiveBlock, assignedTasks = [], openTask }) {
   return (
     <div className="modal-backdrop" onClick={() => setActiveBlock(null)}>
       <section className="modal-card paper-card" onClick={(event) => event.stopPropagation()}>
@@ -1461,6 +1671,7 @@ function BlockModal({ activeBlock, setActiveBlock, saveActiveBlock, deleteActive
           <div>
             <p className="eyebrow">Time block</p>
             <h2>Edit Details</h2>
+            <span className="date-line">{formatDateLong(getDateForDay(activeBlock.day))}</span>
           </div>
 
           <button className="close-btn" onClick={() => setActiveBlock(null)}>
@@ -1480,10 +1691,12 @@ function BlockModal({ activeBlock, setActiveBlock, saveActiveBlock, deleteActive
               value={activeBlock.day}
               onChange={(event) => setActiveBlock({ ...activeBlock, day: event.target.value })}
             >
-              {DAYS.map((day) => (
-                <option key={day}>{day}</option>
-              ))}
-            </select>
+                {DAYS.map((day) => (
+                  <option key={day} value={day}>
+                    {day} - {formatDate(getDateForDay(day))}
+                  </option>
+                ))}
+              </select>
 
             <select
               value={activeBlock.category}
@@ -1526,6 +1739,36 @@ function BlockModal({ activeBlock, setActiveBlock, saveActiveBlock, deleteActive
             onChange={(event) => setActiveBlock({ ...activeBlock, stepsText: event.target.value })}
             placeholder={"Steps\nOne per line"}
           />
+
+          <section className="steps-panel">
+            <div className="steps-heading">
+              <div>
+                <strong>Tasks inside this block</strong>
+                <span>{assignedTasks.length} assigned</span>
+              </div>
+            </div>
+
+            <div className="inside-task-list">
+              {assignedTasks.length === 0 ? (
+                <div className="empty-note">No tasks assigned yet. Create a task and choose this block.</div>
+              ) : (
+                assignedTasks.map((task) => (
+                  <button
+                    type="button"
+                    className="inside-task-row"
+                    key={task.id}
+                    onClick={() => {
+                      openTask(task);
+                    }}
+                  >
+                    <strong>{task.title}</strong>
+                    <span>Due: {formatDueDate(task.dueDate)}</span>
+                    <small>{normalizeSteps(task.steps).filter((step) => step.done).length} of {normalizeSteps(task.steps).length} steps complete</small>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
 
           <div className="modal-actions">
             <button className="danger-btn" type="button" onClick={deleteActiveBlock}>

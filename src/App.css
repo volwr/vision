@@ -238,7 +238,8 @@ main {
 .hero-actions,
 .sticky-actions,
 .task-row-actions,
-.modal-actions {
+.modal-actions,
+.modal-header-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -408,6 +409,20 @@ label {
   font-weight: 750;
 }
 
+.date-line,
+.task-count,
+.mini-block small {
+  display: block;
+  color: rgba(51, 47, 40, 0.62);
+  font-size: 0.78rem;
+  font-weight: 850;
+  margin-top: 4px;
+}
+
+.task-count {
+  color: var(--green-dark);
+}
+
 .sticky-card {
   padding: 15px;
   transform-origin: center;
@@ -474,6 +489,38 @@ label {
 
 .cat-other {
   background: linear-gradient(135deg, #f8f5ec, var(--other));
+}
+
+.prio-high {
+  background: linear-gradient(135deg, #fff2b8, #f7d86b);
+}
+
+.prio-medium {
+  background: linear-gradient(135deg, #dff2ff, #b9dcef);
+}
+
+.prio-low {
+  background: linear-gradient(135deg, #eaf5dc, #cfe5b8);
+}
+
+.block-paper-a {
+  background: linear-gradient(135deg, #edf7fb, #c9dde7);
+}
+
+.block-paper-b {
+  background: linear-gradient(135deg, #f2e8f8, #d8c2e8);
+}
+
+.block-paper-c {
+  background: linear-gradient(135deg, #f8f5ec, #dedbd1);
+}
+
+.block-paper-d {
+  background: linear-gradient(135deg, #eaf4df, #c9ddb6);
+}
+
+.block-paper-e {
+  background: linear-gradient(135deg, #ffe8d3, #efc09a);
 }
 
 .menu-backdrop,
@@ -613,6 +660,14 @@ label {
   background: #efe3c8;
   color: var(--ink);
   font-weight: 950;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.day-title span {
+  color: rgba(51, 47, 40, 0.62);
+  font-size: 0.72rem;
 }
 
 .day-lines {
@@ -722,6 +777,15 @@ label {
   justify-content: space-between;
 }
 
+.modal-header-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.compact-btn {
+  padding: 9px 12px;
+}
+
 .step-progress {
   display: grid;
   gap: 6px;
@@ -752,6 +816,33 @@ label {
   gap: 12px;
   padding: 16px;
   background: rgba(255, 253, 247, 0.7);
+}
+
+.inside-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.inside-task-row {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(89, 72, 48, 0.14);
+  background: rgba(255, 253, 247, 0.7);
+  color: var(--ink);
+  text-align: left;
+}
+
+.inside-task-row strong {
+  font-size: 1rem;
+}
+
+.inside-task-row span,
+.inside-task-row small {
+  color: rgba(51, 47, 40, 0.68);
+  font-size: 0.82rem;
+  font-weight: 750;
 }
 
 .steps-heading {
