@@ -797,32 +797,10 @@ function Dashboard({
 }) {
   return (
     <section className="page-grid dashboard-grid">
-      <div className="hero paper-card">
-        <div>
-          <p className="eyebrow">Today's plan</p>
-          <h2>{selectedDay}</h2>
-        </div>
-
-        <div className="hero-actions">
-          <select value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
-            {DAYS.map((day) => (
-              <option key={day}>{day}</option>
-            ))}
-          </select>
-
-          <button className="primary-btn" onClick={() => generatePlan("selected")}>
-            Generate Today
-          </button>
-          <button className="secondary-btn" onClick={() => generatePlan("week")}>
-            Generate Week
-          </button>
-        </div>
-      </div>
-
-      <section className="paper-card wide">
+      <section className="paper-card schedule-panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Dashboard</p>
+            <p className="eyebrow">Today's schedule</p>
             <h3>{selectedDay} Time Blocks</h3>
           </div>
           <span className="note-chip">{selectedDayBlocks.length} planned</span>
@@ -846,17 +824,6 @@ function Dashboard({
       <section className="paper-card">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Quick add</p>
-            <h3>Add Task</h3>
-          </div>
-        </div>
-
-        <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} compact />
-      </section>
-
-      <section className="paper-card">
-        <div className="section-heading">
-          <div>
             <p className="eyebrow">Tasks</p>
             <h3>Not Scheduled</h3>
           </div>
@@ -870,6 +837,39 @@ function Dashboard({
             unscheduledTasks.map((task) => <TaskNote key={task.id} task={task} openTask={openTask} />)
           )}
         </div>
+      </section>
+
+      <div className="hero paper-card wide">
+        <div>
+          <p className="eyebrow">Plan controls</p>
+          <h2>{selectedDay}</h2>
+        </div>
+
+        <div className="hero-actions">
+          <select value={selectedDay} onChange={(event) => setSelectedDay(event.target.value)}>
+            {DAYS.map((day) => (
+              <option key={day}>{day}</option>
+            ))}
+          </select>
+
+          <button className="primary-btn" onClick={() => generatePlan("selected")}>
+            Generate Today
+          </button>
+          <button className="secondary-btn" onClick={() => generatePlan("week")}>
+            Generate Week
+          </button>
+        </div>
+      </div>
+
+      <section className="paper-card wide">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Quick add</p>
+            <h3>Add Task</h3>
+          </div>
+        </div>
+
+        <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} compact />
       </section>
 
     </section>

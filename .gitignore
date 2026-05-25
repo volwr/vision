@@ -4,3 +4,6 @@ dist/
 node-portable.zip
 .DS_Store
 *.log
+.chrome-qa*/
+desktop-check.png
+mobile-check.png
