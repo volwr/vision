@@ -1522,7 +1522,7 @@ function IntegrationsPage({ connectedSources, toggleIntegration, importAssignmen
         })}
       </section>
 
-      <section className="page-grid">
+      <section className="page-grid integrations-lower">
         <section className="paper-card">
           <div className="section-heading">
             <div>
@@ -1544,32 +1544,6 @@ function IntegrationsPage({ connectedSources, toggleIntegration, importAssignmen
                 </div>
               </article>
             ))}
-          </div>
-        </section>
-
-        <section className="paper-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Automation rules</p>
-              <h3>One planner, less chasing</h3>
-            </div>
-          </div>
-
-          <div className="settings-list">
-            <article>
-              <strong>Assignments become tasks</strong>
-              <p>Imported work keeps the title, due date, class context, priority, and starter steps.</p>
-            </article>
-
-            <article>
-              <strong>Events protect your time</strong>
-              <p>Class meetings and calendar events can become blocks before Vision generates a plan.</p>
-            </article>
-
-            <article>
-              <strong>Planning stays simple</strong>
-              <p>Everything lands in the task list first, then the existing generator schedules it around your week.</p>
-            </article>
           </div>
         </section>
       </section>

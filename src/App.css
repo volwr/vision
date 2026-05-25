@@ -814,6 +814,10 @@ label {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.integrations-lower {
+  grid-template-columns: 1fr;
+}
+
 .integration-card {
   display: grid;
   gap: 16px;
