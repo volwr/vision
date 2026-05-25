@@ -23,6 +23,71 @@ const BLOCK_COLOR_STYLES = ["block-paper-a", "block-paper-b", "block-paper-c", "
 const START_HOUR = 6;
 const END_HOUR = 23;
 
+const INTEGRATION_SOURCES = [
+  {
+    id: "schoology",
+    name: "Schoology",
+    type: "LMS",
+    accent: "source-blue",
+    description: "Assignments, due dates, course labels, and posted updates.",
+    pulls: ["Assignments", "Due dates", "Course names"],
+  },
+  {
+    id: "outlook",
+    name: "Outlook",
+    type: "Calendar + mail",
+    accent: "source-teal",
+    description: "Class events, teacher emails, deadlines, and meeting invites.",
+    pulls: ["Calendar events", "Flagged emails", "Reminders"],
+  },
+  {
+    id: "gmail",
+    name: "Gmail",
+    type: "Mail",
+    accent: "source-red",
+    description: "Teacher messages and deadline emails that should become tasks.",
+    pulls: ["Deadline emails", "Attachments", "Labels"],
+  },
+  {
+    id: "d2l",
+    name: "D2L Brightspace",
+    type: "LMS",
+    accent: "source-gold",
+    description: "Course work, quizzes, module checklists, and due dates.",
+    pulls: ["Assignments", "Quizzes", "Modules"],
+  },
+];
+
+const IMPORT_PREVIEW = [
+  {
+    title: "Biology lab reflection",
+    duration: 45,
+    priority: "High",
+    category: "Homework",
+    dueOffset: 2,
+    description: "Imported from connected class sources.",
+    steps: ["Read instructions", "Draft response", "Submit online"],
+  },
+  {
+    title: "History discussion post",
+    duration: 30,
+    priority: "Medium",
+    category: "School",
+    dueOffset: 4,
+    description: "Imported from connected class sources.",
+    steps: ["Review prompt", "Write post", "Reply to classmates"],
+  },
+  {
+    title: "Math quiz review",
+    duration: 60,
+    priority: "High",
+    category: "Homework",
+    dueOffset: 1,
+    description: "Imported from connected class sources.",
+    steps: ["Open study guide", "Practice missed problems", "Check notes"],
+  },
+];
+
 function toISODate(date) {
   const copy = new Date(date);
   copy.setHours(0, 0, 0, 0);
@@ -49,6 +114,12 @@ function getDateForDay(dayName) {
 
 function getISODateForDay(dayName) {
   return toISODate(getDateForDay(dayName));
+}
+
+function getFutureISODate(daysFromToday) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  return toISODate(date);
 }
 
 const sampleClassBlockId = crypto.randomUUID();
@@ -298,6 +369,7 @@ export default function App() {
   const [tasks, setTasks] = useState(initialTasks);
   const [blocks, setBlocks] = useState(initialBlocks);
   const [regularBlocks, setRegularBlocks] = useState(initialRegularBlocks);
+  const [connectedSources, setConnectedSources] = useState(["schoology"]);
   const [activeBlock, setActiveBlock] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
   const [message, setMessage] = useState("");
@@ -336,6 +408,49 @@ export default function App() {
   function showMessage(text) {
     setMessage(text);
     setTimeout(() => setMessage(""), 3200);
+  }
+
+  function toggleIntegration(sourceId) {
+    setConnectedSources((current) => {
+      if (current.includes(sourceId)) {
+        showMessage("Integration disconnected.");
+        return current.filter((id) => id !== sourceId);
+      }
+
+      showMessage("Integration connected.");
+      return [...current, sourceId];
+    });
+  }
+
+  function importAssignments(sourceId = null) {
+    const sourceIds = sourceId ? [sourceId] : connectedSources;
+    const sourceNames = INTEGRATION_SOURCES
+      .filter((source) => sourceIds.includes(source.id))
+      .map((source) => source.name);
+
+    if (sourceNames.length === 0) {
+      showMessage("Connect a source before importing assignments.");
+      return;
+    }
+
+    const importedTasks = IMPORT_PREVIEW.map((assignment, index) => {
+      const sourceName = sourceNames[index % sourceNames.length];
+
+      return {
+        id: crypto.randomUUID(),
+        title: assignment.title,
+        duration: assignment.duration,
+        priority: assignment.priority,
+        category: assignment.category,
+        dueDate: getFutureISODate(assignment.dueOffset),
+        description: `${assignment.description} Source: ${sourceName}.`,
+        steps: assignment.steps.map((title) => ({ id: crypto.randomUUID(), title, done: false })),
+        scheduledBlockId: null,
+      };
+    });
+
+    setTasks((current) => [...importedTasks, ...current]);
+    showMessage(`Imported ${importedTasks.length} assignment${importedTasks.length === 1 ? "" : "s"} from ${sourceNames.join(", ")}.`);
   }
 
   function addTask(event) {
@@ -788,6 +903,9 @@ export default function App() {
               <button className={page === "tasks" ? "active" : ""} onClick={() => closeMenuAndGo("tasks")}>
                 Tasks
               </button>
+              <button className={page === "integrations" ? "active" : ""} onClick={() => closeMenuAndGo("integrations")}>
+                Integrations
+              </button>
               <button className={page === "settings" ? "active" : ""} onClick={() => closeMenuAndGo("settings")}>
                 Settings
               </button>
@@ -847,6 +965,15 @@ export default function App() {
             deleteTask={deleteTask}
             generatePlan={generatePlan}
             openTask={openTask}
+          />
+        )}
+
+        {page === "integrations" && (
+          <IntegrationsPage
+            connectedSources={connectedSources}
+            toggleIntegration={toggleIntegration}
+            importAssignments={importAssignments}
+            tasks={tasks}
           />
         )}
 
@@ -1330,6 +1457,121 @@ function TasksPage({ tasks, blocks, taskDraft, setTaskDraft, addTask, deleteTask
         </div>
 
         <TaskForm taskDraft={taskDraft} setTaskDraft={setTaskDraft} addTask={addTask} blocks={blocks} />
+      </section>
+    </section>
+  );
+}
+
+function IntegrationsPage({ connectedSources, toggleIntegration, importAssignments, tasks }) {
+  const importedCount = tasks.filter((task) => task.description?.includes("Source:")).length;
+
+  return (
+    <section className="integrations-page">
+      <section className="paper-card integrations-hero">
+        <div>
+          <p className="eyebrow">Connected planning</p>
+          <h2>Bring every assignment into Vision.</h2>
+          <p className="muted">
+            Connect your school tools once, then let Vision collect homework, due dates, quizzes, class events,
+            and teacher messages into one planner.
+          </p>
+        </div>
+
+        <div className="sync-summary">
+          <strong>{connectedSources.length}</strong>
+          <span>sources connected</span>
+          <button className="primary-btn" onClick={() => importAssignments()}>
+            Import Assignments
+          </button>
+        </div>
+      </section>
+
+      <section className="integration-grid">
+        {INTEGRATION_SOURCES.map((source) => {
+          const connected = connectedSources.includes(source.id);
+
+          return (
+            <article className={`integration-card paper-card ${source.accent}`} key={source.id}>
+              <div className="integration-topline">
+                <span className="source-mark">{source.name.slice(0, 1)}</span>
+                <span className={connected ? "status-pill connected" : "status-pill"}>{connected ? "Connected" : "Available"}</span>
+              </div>
+
+              <div>
+                <p className="eyebrow">{source.type}</p>
+                <h3>{source.name}</h3>
+                <p>{source.description}</p>
+              </div>
+
+              <div className="pull-list">
+                {source.pulls.map((item) => (
+                  <span key={item}>{item}</span>
+                ))}
+              </div>
+
+              <div className="integration-actions">
+                <button className={connected ? "secondary-btn" : "primary-btn"} onClick={() => toggleIntegration(source.id)}>
+                  {connected ? "Disconnect" : "Connect"}
+                </button>
+                <button className="secondary-btn" onClick={() => importAssignments(source.id)} disabled={!connected}>
+                  Import
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="page-grid">
+        <section className="paper-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Import preview</p>
+              <h3>What Vision creates</h3>
+            </div>
+            <span className="note-chip">{importedCount} imported</span>
+          </div>
+
+          <div className="import-preview-list">
+            {IMPORT_PREVIEW.map((assignment) => (
+              <article className={`task-row ${getTaskStyle(assignment)}`} key={assignment.title}>
+                <div className="task-row-main">
+                  <strong>{assignment.title}</strong>
+                  <p>{assignment.description}</p>
+                  <span>
+                    {assignment.duration} min * {assignment.priority} priority * due in {assignment.dueOffset} days
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="paper-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Automation rules</p>
+              <h3>One planner, less chasing</h3>
+            </div>
+          </div>
+
+          <div className="settings-list">
+            <article>
+              <strong>Assignments become tasks</strong>
+              <p>Imported work keeps the title, due date, class context, priority, and starter steps.</p>
+            </article>
+
+            <article>
+              <strong>Events protect your time</strong>
+              <p>Class meetings and calendar events can become blocks before Vision generates a plan.</p>
+            </article>
+
+            <article>
+              <strong>Planning stays simple</strong>
+              <p>Everything lands in the task list first, then the existing generator schedules it around your week.</p>
+            </article>
+          </div>
+        </section>
       </section>
     </section>
   );
